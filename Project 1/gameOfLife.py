@@ -1,54 +1,90 @@
-import pygame
+import pygame as pg
 import numpy as np
+
 from sys import exit
+from numpy import random
+from numba import njit
+
+
 
 #turns on pygame
-pygame.init()
+pg.init()
 
 #creates display surface (game window)
-width = 1000
-height = 1000
-screen = pygame.display.set_mode((width,height),pygame.RESIZABLE)
-# screen = pygame.display.set_mode((0,0),pygame.FULLSCREEN)
-pygame.display.set_caption("Conway's Game of Life")
 
+
+
+# gWidth = 2000
+# gHeight = 2000
+
+sWidth = 2000
+sHeight = 2000
+screen = pg.display.set_mode((sWidth,sHeight),pg.RESIZABLE)
+# screen = pg.display.set_mode((0,0),pg.FULLSCREEN)
+pg.display.set_caption("Conway's Game of Life")
 
 #setting frame part 1
-clock = pygame.time.Clock()
+clock = pg.time.Clock()
 
 #RGB colors
 black = (0,0,0)
 white = (255,255,255)
-darkgreen = (0,25,0)
+gridColor = (27,27,27)
 
-on = pygame.Surface([50,50])
-off = pygame.Surface([50,50])
+
 
 #testfont
-test_font = pygame.font.Font('font/Pixeltype.ttf', 50)
+font = pg.font.Font('font/Pixeltype.ttf', 30)
 # text_surface = test_font.render("Conway's Game of Life", False, 'White')
 
 
-#creating dead matrix
-rows = 100
-cols = 100
-matrix = np.zeros([rows, cols], dtype = int)
+#for fps
+def displayFPS():
+	fps = str(int(clock.get_fps()))
+	return font.render(fps, 1, pg.Color("coral"))
 
+drawRate = 300
+gameRate = 40
+
+cellSize = 10
+
+#determines number of cells
+#1000 / 20 = 200 
+rows = sWidth // cellSize     
+cols = sHeight // cellSize
+
+
+#pulls data
+activeCellSurface = pg.Surface((cellSize-1, cellSize-1))
+deadCellSurface = pg.Surface((cellSize-1, cellSize-1))
+
+#draws rects onto surface
+activeCell = pg.draw.rect(activeCellSurface, white, (0,0,cellSize-1,cellSize-1))
+deadCell = pg.draw.rect(deadCellSurface, black, (0,0,cellSize-1,cellSize-1))
+
+
+
+#creating dead matrix
+def createMatrix(rows, cols):
+    return np.zeros([rows,cols], dtype = int)
+
+
+matrix = createMatrix(rows,cols)
 
 #updating matrix
-# matrix[1,2] = True
-# matrix[2,3] = True
-# matrix[3,1] = True
-# matrix[3,2] = True
-# matrix[3,3] = True
+matrix[1,2] = True
+matrix[2,3] = True
+matrix[3,1] = True
+matrix[3,2] = True
+matrix[3,3] = True
 
 
-# #r-pentomino pattern
-# matrix[28,30] = True
-# matrix[28,31] = True
-# matrix[29,29] = True
-# matrix[29,30] = True
-# matrix[30,30] = True
+#r-pentomino pattern
+matrix[28,30] = True
+matrix[28,31] = True
+matrix[29,29] = True
+matrix[29,30] = True
+matrix[30,30] = True
 
 
 
@@ -59,21 +95,33 @@ matrix = np.zeros([rows, cols], dtype = int)
 # matrix[9,10] = True
 # matrix[10,10] = True
 
+@njit
+def getPatterns(matrix):
+    return np.array(np.where(matrix == True))
 
+@njit
 def liveNeighborCount(matrix, row, col):
     top = max(0, row-1)
     left = max(0, col-1)
     return np.sum(matrix[top:row+2,left:col+2]) - matrix[row,col]
 
-
 def cellActivate(matrix, row, col):
         aliveCount = liveNeighborCount(matrix, row, col)
-        if aliveCount < 2 or aliveCount > 3:
-            return False
         if aliveCount == 2: 
             return matrix[row,col]
-        if aliveCount == 3:
-            return True
+        elif aliveCount == 3:
+            return 1
+        else: 
+            return 0
+
+
+def randomNoise(matrix):
+    x = random.randint(150)
+    y = random.randint(150)
+    matrix[x,y] = True
+    matrix[x+1,y+1] = True
+    matrix[x,y+1] = True
+    matrix[x+1,y] = True
 
 
 def updateBoard(matrix):
@@ -83,16 +131,15 @@ def updateBoard(matrix):
         col = index[1]
         if cellActivate(matrix, row, col):
             newMatrix[row,col] = 1
+            #quicker now
             # randomColor = list(np.random.choice(range(50,256), size=3))
-            pygame.draw.rect(screen, white, (col*10,row*10,9,9))
-            
-        else:
+        
+            screen.blit(activeCellSurface,(col*cellSize,row*cellSize))
+        else: 
             newMatrix[row,col] = 0
-            pygame.draw.rect(screen, black, (col*10,row*10,9,9))
+            screen.blit(deadCellSurface,(col*cellSize,row*cellSize)) 
 
-    # print(chr(27) + "[2J")
-    # print(newMatrix)
-    #pygame stuff
+            
     return newMatrix
 
 
@@ -102,81 +149,78 @@ def currentBoard(matrix):
         row = index[0]
         col = index[1]
         if matrix[row,col] == 1:
-            pygame.draw.rect(screen, white, (col*10,row*10,9,9))
-            
+            screen.blit(activeCellSurface,(col*cellSize,row*cellSize))
         else:
-            pygame.draw.rect(screen, black, (col*10,row*10,9,9))
+            screen.blit(deadCellSurface,(col*cellSize,row*cellSize))
 
 paused = True
 
 #keeps window open
 while True:
     #gets all the events
-    for event in pygame.event.get():
+    for event in pg.event.get():
         #.quit is the x button on window
-        if event.type == pygame.QUIT:
-            pygame.quit()
+        if event.type == pg.QUIT:
+            pg.quit()
             exit()
-
-        if event.type == pygame.KEYDOWN:
-            print("key down")
-            if event.key == pygame.K_SPACE:
-                print("space down")
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_SPACE:
                 if paused == False:
                     paused = True
                 else:
                     paused = False
-
-
-
-
-
-    #provides mouse position when moved
-    # if event.type == pygame.MOUSEMOTION:
-    #     print(event.pos)
-    # #knows when mouse button is pressed down
-    # if event.type == pygame.MOUSEBUTTONDOWN:
-    #     paused = True
-    #     print('mouse down')
-
-    # if event.type == pygame.MOUSEBUTTONUP:
-    #     paused = False
-    #     print('mouse up')
-
+            if event.key == pg.K_1:
+                print("1 pressed")
+                gameRate = 4
+            if event.key == pg.K_2:
+                print("2 pressed")
+                gameRate = 12
+            if event.key == pg.K_3:
+                print("3 pressed")
+                gameRate = 20
+        
 
 
 
     #background color set
-    screen.fill(darkgreen)
-    
+    screen.fill(gridColor)
+
+
+
+
     if paused == False:
+        randomNoise(matrix)
         newMatrix = updateBoard(matrix)
         matrix = newMatrix
+        
     else:
         currentBoard(matrix)
-
-
-    # newMatrix = str(updateBoard(matrix))
-    # text_surface = test_font.render(newMatrix, False, 'White')
-    # screen.blit(text_surface,(300,50))
+       
 
 
 
-    click = pygame.mouse.get_pressed()
-    mousex, mousey = pygame.mouse.get_pos()
+
+    click = pg.mouse.get_pressed()
+    mouseX, mouseY = pg.mouse.get_pos()
     # print(click, mousex, mousey)
 
     if click[0] == True:
         paused = True
-        roundedX = mousex // 10
-        roundedY = mousey // 10
+        rate = drawRate
+        roundedX = mouseX // cellSize
+        roundedY = mouseY // cellSize
         matrix[roundedY,roundedX] = True
+    else:
+        rate = gameRate
     # else:
     #     paused = False
 
 
+    screen.blit(displayFPS(), (10,0))
     #updates the display surface (same as .flip when no arguments passed)
-    pygame.display.update()
+    pg.display.update()
     #setting frame rate part 2, sets max frame rate
-    clock.tick(60)
+
+
+    clock.tick(rate)
 
