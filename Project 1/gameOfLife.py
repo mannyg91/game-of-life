@@ -17,8 +17,8 @@ pg.init()
 # gWidth = 2000
 # gHeight = 2000
 
-sWidth = 2000
-sHeight = 2000
+sWidth = 1000
+sHeight = 1000
 screen = pg.display.set_mode((sWidth,sHeight),pg.RESIZABLE)
 # screen = pg.display.set_mode((0,0),pg.FULLSCREEN)
 pg.display.set_caption("Conway's Game of Life")
@@ -28,8 +28,9 @@ clock = pg.time.Clock()
 
 #RGB colors
 black = (0,0,0)
+randomColor = list(np.random.choice(range(50,256), size=3))
 white = (255,255,255)
-gridColor = (27,27,27)
+gridColor = (30,30,30)
 
 
 
@@ -57,6 +58,7 @@ cols = sHeight // cellSize
 #pulls data
 activeCellSurface = pg.Surface((cellSize-1, cellSize-1))
 deadCellSurface = pg.Surface((cellSize-1, cellSize-1))
+gridSurface = pg.Surface((sWidth,sHeight))
 
 #draws rects onto surface
 activeCell = pg.draw.rect(activeCellSurface, white, (0,0,cellSize-1,cellSize-1))
@@ -66,10 +68,19 @@ deadCell = pg.draw.rect(deadCellSurface, black, (0,0,cellSize-1,cellSize-1))
 
 #creating dead matrix
 def createMatrix(rows, cols):
+    pg.draw.rect(gridSurface, gridColor, (0,0,sWidth,sHeight))
+    for row in range(rows):
+        for col in range(cols):
+            pg.draw.rect(gridSurface, black, (row*cellSize,col*cellSize,cellSize-1,cellSize-1))
+
     return np.zeros([rows,cols], dtype = int)
 
 
 matrix = createMatrix(rows,cols)
+# for index, cell in np.ndenumerate(matrix):
+#     row = index[0]
+#     col = index[1]
+#     screen.blit(deadCellSurface,(col*cellSize,row*cellSize))
 
 #updating matrix
 matrix[1,2] = True
@@ -94,6 +105,12 @@ matrix[30,30] = True
 # matrix[9,9] = True
 # matrix[9,10] = True
 # matrix[10,10] = True
+
+
+
+
+
+
 
 @njit
 def getPatterns(matrix):
@@ -123,23 +140,22 @@ def randomNoise(matrix):
     matrix[x,y+1] = True
     matrix[x+1,y] = True
 
-
+#started work here
 def updateBoard(matrix):
     newMatrix = np.array(matrix)
+    
     for index, cell in np.ndenumerate(matrix):
         row = index[0]
         col = index[1]
         if cellActivate(matrix, row, col):
-            newMatrix[row,col] = 1
-            #quicker now
-            # randomColor = list(np.random.choice(range(50,256), size=3))
-        
+            if matrix[row,col] != 1:
+                newMatrix[row,col] = 1
             screen.blit(activeCellSurface,(col*cellSize,row*cellSize))
         else: 
-            newMatrix[row,col] = 0
-            screen.blit(deadCellSurface,(col*cellSize,row*cellSize)) 
+            if matrix[row,col] != 0:
+                newMatrix[row,col] = 0
+                screen.blit(deadCellSurface,(col*cellSize,row*cellSize)) 
 
-            
     return newMatrix
 
 
@@ -150,8 +166,6 @@ def currentBoard(matrix):
         col = index[1]
         if matrix[row,col] == 1:
             screen.blit(activeCellSurface,(col*cellSize,row*cellSize))
-        else:
-            screen.blit(deadCellSurface,(col*cellSize,row*cellSize))
 
 paused = True
 
@@ -171,25 +185,32 @@ while True:
                     paused = False
             if event.key == pg.K_1:
                 print("1 pressed")
-                gameRate = 4
+                gameRate = 3
             if event.key == pg.K_2:
                 print("2 pressed")
-                gameRate = 12
+                gameRate = 10
             if event.key == pg.K_3:
                 print("3 pressed")
-                gameRate = 20
+                gameRate = 15
+            if event.key == pg.K_4:
+                print("4 pressed")
+                gameRate = 25
+            if event.key == pg.K_5:
+                print("5 pressed")
+                gameRate = 100
         
 
 
 
     #background color set
-    screen.fill(gridColor)
-
+    # screen.fill(gridColor)
+    screen.blit(gridSurface,(0,0))
+    
 
 
 
     if paused == False:
-        randomNoise(matrix)
+        # randomNoise(matrix)
         newMatrix = updateBoard(matrix)
         matrix = newMatrix
         
@@ -204,16 +225,25 @@ while True:
     mouseX, mouseY = pg.mouse.get_pos()
     # print(click, mousex, mousey)
 
+    #draw
     if click[0] == True:
         paused = True
         rate = drawRate
         roundedX = mouseX // cellSize
         roundedY = mouseY // cellSize
         matrix[roundedY,roundedX] = True
+    elif click[2] == True:
+        paused = True
+        rate = drawRate
+        roundedX = mouseX // cellSize
+        roundedY = mouseY // cellSize
+        matrix[roundedY,roundedX] = False
     else:
         rate = gameRate
-    # else:
-    #     paused = False
+
+
+
+
 
 
     screen.blit(displayFPS(), (10,0))
