@@ -11,8 +11,8 @@ pg.init()
 # gWidth = 2000
 # gHeight = 2000
 
-sWidth = 800
-sHeight = 800
+sWidth = 1000
+sHeight = 1000
 screen = pg.display.set_mode((sWidth,sHeight),pg.RESIZABLE)
 # screen = pg.display.set_mode((0,0),pg.FULLSCREEN)
 pg.display.set_caption("Conway's Game of Life")
@@ -22,8 +22,7 @@ clock = pg.time.Clock()
 
 #RGB colors
 black = (0,0,0)
-randomColor = list(np.random.choice(range(50,256), size=3))
-white = (255,255,255)
+cellColor = (255,255,255)
 gridColor = (20,10,70)
 
 
@@ -39,7 +38,7 @@ def displayFPS():
 drawRate = 300
 gameRate = 40
 
-cellSize = 4
+cellSize = 5
 
 #determines number of cells
 #1000 / 20 = 200 
@@ -47,9 +46,9 @@ rows = sWidth // cellSize
 cols = sHeight // cellSize
 
 
-activeSurf = pg.Surface((cellSize-1, cellSize-1))
+# activeSurf = pg.Surface((cellSize-1, cellSize-1))
 gridSurf = pg.Surface((sWidth,sHeight))
-activeCell = pg.draw.rect(activeSurf, white, (0,0,cellSize-1,cellSize-1))
+# activeCell = pg.draw.rect(activeSurf, cellColor, (0,0,cellSize-1,cellSize-1))
 
 
 
@@ -123,7 +122,7 @@ def updateBoard(matrix):
         if cellActivate(matrix, row, col):
             if matrix[row,col] != 1:
                 newMatrix[row,col] = 1
-            screen.blit(activeSurf,(col*cellSize,row*cellSize))
+            pg.draw.rect(screen,cellColor,(col*cellSize,row*cellSize,cellSize-1,cellSize-1))
         else: 
             if matrix[row,col] != 0:
                 newMatrix[row,col] = 0
@@ -136,7 +135,7 @@ def currentBoard(matrix):
         row = index[0]
         col = index[1]
         if matrix[row,col] == 1:
-            screen.blit(activeSurf,(col*cellSize,row*cellSize))
+            pg.draw.rect(screen,cellColor,(col*cellSize,row*cellSize,cellSize-1,cellSize-1))
 
 
 paused = True
@@ -164,7 +163,9 @@ while 1:
                 case pg.K_4:
                     gameRate = 25
                 case pg.K_5:
-                    gameRate = 100
+                    gameRate = 75
+                case pg.K_6:
+                    gameRate = 300
        
       
 
@@ -206,4 +207,3 @@ while 1:
     screen.blit(displayFPS(), (10,0))
     pg.display.update()
     clock.tick(rate)
-
