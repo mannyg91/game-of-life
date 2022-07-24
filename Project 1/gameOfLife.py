@@ -1,10 +1,15 @@
 import pygame as pg
-import numpy as np
-from sys import exit
 from pygame import midi
+
+import numpy as np
 from numpy import random
+
+from tkinter import *
+from tkinter import colorchooser
+
+from sys import exit
 from numba import njit
-from time import sleep 
+from time import sleep
 
 #turns on pygame
 pg.init()
@@ -15,10 +20,11 @@ midi_out = pg.midi.Output(port, 0)
 
 midiBank = { 0 : "Acoustic Grand Piano", 1 : "Bright Acoustic Piano",2 : "Electric Grand Piano",3 : "Honky-tonk Piano",4 : "Electric Piano 1", 5 : "Electric Piano 2",6  : "Harpsichord",7 : "Clavinet",8 :  "Celesta",9 : "Glockenspiel",10 : "Music Box",11 : "Vibraphone",12 : "Marimba",13 : "Xylophone", 14 : "Tubular Bells", 15 : "Dulcimer", 16 : "Drawbar Organ", 17 : "Percussive Organ", 18 : "Rock Organ", 19 : "Church Organ", 20: "Reed Organ", 21: "Accordion", 22: "Harmonica", 23 : "Tango Accordion", 24 : "Acoustic Guitar (nylon)", 25 : "Acoustic Guitar (steel)", 26 : "Electric Guitar (jazz)", 27 : "Electric Guitar (clean)", 28 : "Electric Guitar (muted)", 29: "Overdriven Guitar", 30 : "Distortion Guitar", 31 : "Guitar harmonics", 32 : "Acoustic Bass", 33 : "Electric Bass (finger)", 34 : "Electric Bass (pick)", 35 : "Fretless Bass", 36 : "Slap Bass 1", 37 : "Slap Bass 2", 38 : "Synth Bass 1", 39: "Synth Bass 2", 40 : "Violin", 41 : "Viola", 42 : "Cello", 43 : "Contrabass", 44 : "Tremolo Strings", 45 : "Pizzicato Strings", 46 : "Orchestral Harp", 47 : "Timpani", 48: "String Ensemble 1", 49 : "String Ensemble 2", 50 : "Synth Strings 1", 51 : "Synth Strings 2", 52 : "Choir Aahs", 53 : "Voice Oohs", 54 : "Synth Voice", 55 : "Orchestra Hit", 56 : "Trumpet", 57: "Trombone", 58: "Tuba", 59: "Muted Trumpet", 60: "French Horn", 61: "Brass Section", 62 : "Synth Brass 1", 63 : "Synth Brass 2", 64: "Soprano Sax", 65: "Alto Sax", 66 : "Tenor Sax", 67: "Baritone Sax", 68 : "Oboe", 69 :  "English Horn", 70 : "Bassoon", 71 : "Clarinet", 72 : "Piccolo", 73: "Flute",74: "Recorder",75: "Pan Flute",76: "Blown Bottle",77: "Shakuhachi",78: "Whistle",79: "Ocarina",80: "Lead 1 (square)",81: "Lead 2 (sawtooth)",82: "Lead 3 (calliope)",83: "Lead 4 (chiff)",84: "Lead 5 (charang)",85: "Lead 6 (voice)",86: "Lead 7 (fifths)",87: "Lead 8 (bass + lead)",88: "Pad 1 (new age)",89: "Pad 2 (warm)",90: "Pad 3 (polysynth)",91: "Pad 4 (choir)",92: "Pad 5 (bowed)",93: "Pad 6 (metallic)",94: "Pad 7 (halo)",95: "Pad 8 (sweep)",96: "FX 1 (rain)",97: "FX 2 (soundtrack)",98: "FX 3 (crystal)",99: "FX 4 (atmosphere)",100: "FX 5 (brightness)",101: "FX 6 (goblins)",102: "FX 7 (echoes)",103: "FX 8 (sci-fi)",104: "Sitar",105: "Banjo",106: "Shamisen",107: "Koto",108: "Kalimba",109: "Bag pipe",110: "Fiddle",111: "Shanai",112: "Tinkle Bell",113: "Agogo",114: "Steel Drums",115: "Woodblock",116: "Taiko Drum",117: "Melodic Tom",118: "Synth Drum",119: "Reverse Cymbal",120: "Guitar Fret Noise",121: "Breath Noise",122: "Seashore",123: "Bird Tweet",124: "Telephone Ring", 125: "Helicopter",126: "Applause",127: "Gunshot" }
 
-
-#creates display surface (game window) can be used later for zooming in/out
-# gWidth = 2000
-# gHeight = 2000
+#USED TO SET TO MONITORS RESOLUTION WHEN FULLSCREEN IS ENABLED
+# displayInfo = pg.display.Info()
+# print(displayInfo)
+# sWidth = displayInfo.current_w
+# sHeight = displayInfo.current_h
 
 sWidth = 996
 sHeight = 996
@@ -35,30 +41,26 @@ clock = pg.time.Clock()
 
 #RGB colors
 black = (0,0,0)
-cellColor = (255,170,0)
-gridColor = (20,10,90)
+cellColor = (255,255,255)
+gridColor = (25,15,80)
 musicColor = (0,200,0)
 musicColor2 = (20,10,90)
 
-font = pg.font.Font('pixelFont.ttf', 30)
+font = pg.font.Font('pixelFont.ttf', 40)
 
 
-#for fps
-def displayFPS():
-	fps = str(int(clock.get_fps()))
-	return font.render(fps, 1, (0,255,0))
 
-drawRate = 300
-gameRate = 7
+drawRate = 500
+gameRate = 10000
 
-cellSize = 5
-minCellSize = 6
+cellSize = 10
+minCellSize = 5
 maxCellSize = 500
 
 #determines number of cells
 #1000 / 20 = 200 
-rows = sWidth // minCellSize     
-cols = sHeight // minCellSize
+rows = sHeight // minCellSize     
+cols = sWidth // minCellSize
 
 
 # activeSurf = pg.Surface((cellSize-1, cellSize-1))
@@ -71,11 +73,16 @@ musicCell = pg.draw.rect(musicSurf, musicColor, (0,0,cellSize-1,cellSize-1))
 musicCell2 = pg.draw.rect(musicSurf2, musicColor2, (0,0,cellSize,cellSize))
 
 
-#creating dead matrix
+def displayFPS():
+	fps = str(int(clock.get_fps()))
+	return font.render("FPS: " + fps, 1, (0,255,0))
+
+
 def createMatrix(rows, cols):
     return np.zeros([rows,cols], dtype = int)
 
-def renderMatrix(rows, cols):
+
+def renderGrid(rows, cols):
     pg.draw.rect(gridSurf, gridColor, (0,0,sWidth,sHeight))
     if cols > rows:
         for col in range(cols):
@@ -88,14 +95,106 @@ def renderMatrix(rows, cols):
     return
 
 
+#design pattern maker
+@njit
+def getPatterns(matrix):
+    return np.array(np.where(matrix))
+
+
+def randomNoise(matrix, rows, cols):
+    row = random.randint(rows-2)
+    col = random.randint(cols-2)
+    matrix[row-1,col-1] = True
+    matrix[row-1,col] = True
+    matrix[row,col] = True
+    matrix[row,col+1] = True
+    matrix[row+1,col] = True
+
+  
+
+indices = np.ndindex(rows, cols)
+xindices = []
+for index in indices:
+    xindices.append(index)
+xindices = np.array(xindices)
+
+
+
+#a change list:
+#of a prefixed size
+#modify positions
+#spit out
+#pass into music
+#reinitialize it
+
+@njit
+def updateMatrix(matrix,newMatrix,newCells,indices):
+    for index in indices:
+        row = index[0]
+        col = index[1]
+        top = max(0, row-1)
+        left = max(0, col-1)
+        aliveCount = np.sum(matrix[top:row+2,left:col+2]) - matrix[row,col]
+        if aliveCount == 2: 
+            newMatrix[row,col] = matrix[row,col]
+        elif aliveCount == 3:
+            newMatrix[row,col] = 1
+            if matrix[row,col] == 0:
+                newCells[row,col] = 1
+        else:
+            newMatrix[row,col] = 0
+    return newMatrix
+
+
+
+def renderCells(matrix, muted, newCells):
+    aliveIndices = np.nonzero(matrix)
+    newIndices = np.nonzero(newCells)
+    for row, col in zip(*aliveIndices):
+        if matrix[row,col] == 1:
+            pg.draw.rect(screen,cellColor,(col*cellSize,row*cellSize,cellSize-1,cellSize-1))
+    if sequencer == False and muted == False:
+        for row, col in zip(*newIndices):
+            notesCell(row, col, cellSize)
+
+
+
+# def wand(matrix, cellSize)):
+#     random.randint()
+#     click = pg.mouse.get_pressed()
+#     mouseX, mouseY = pg.mouse.get_pos()
+#     if click[0]:
+#         paused = True
+#         rate = drawRate
+#         roundedX = mouseX // cellSize
+#         roundedY = mouseY // cellSize
+#         matrix[roundedY,roundedX] = True
+#     elif click[2]:
+#         paused = True
+#         rate = drawRate
+#         roundedX = mouseX // cellSize
+#         roundedY = mouseY // cellSize
+#         matrix[roundedY,roundedX] = False
+#     else:
+#         rate = gameRate
+
+#know where its been clicked
+#generate an array of random numbers within a range of 
+
+
+
 matrix = createMatrix(rows,cols)
 
+# rPentomino = np.array([[28,30],[28,31],[29,29],[29,30],[30,30]])
+print(type(matrix))
+
+
 #updating matrix
-matrix[1,2] = True
-matrix[2,3] = True
-matrix[3,1] = True
-matrix[3,2] = True
-matrix[3,3] = True
+# matrix[1,2] = True
+# matrix[2,3] = True
+# matrix[3,1] = True
+# matrix[3,2] = True
+# matrix[3,3] = True
 
 #r-pentomino pattern
 matrix[28,30] = True
@@ -105,67 +204,11 @@ matrix[29,30] = True
 matrix[30,30] = True
 
 # #r-pentomino pattern
-matrix[8,10] = True
-matrix[8,11] = True
-matrix[9,9] = True
-matrix[9,10] = True
-matrix[10,10] = True
-
-@njit
-def getPatterns(matrix):
-    return np.array(np.where(matrix == True))
-
-@njit
-def liveNeighborCount(matrix, row, col):
-    top = max(0, row-1)
-    left = max(0, col-1)
-    return np.sum(matrix[top:row+2,left:col+2]) - matrix[row,col]
-
-@njit
-def cellActivate(matrix, row, col):
-        aliveCount = liveNeighborCount(matrix, row, col)
-        if aliveCount == 2: 
-            return matrix[row,col]
-        elif aliveCount == 3:
-            return 1
-        else: 
-            return 0
-
-def updateBoard(matrix, sequencer):
-    newMatrix = np.array(matrix)
-    for index, cell in np.ndenumerate(matrix):
-        row = index[0]
-        col = index[1]
-        if cellActivate(matrix, row, col):
-            if matrix[row,col] != 1:
-                newMatrix[row,col] = 1
-                pg.draw.rect(screen,cellColor,(col*cellSize,row*cellSize,cellSize-1,cellSize-1))
-                if sequencer == False and muted == False:
-                    notesCell(row, col, cellSize)
-            else:
-                pg.draw.rect(screen,cellColor,(col*cellSize,row*cellSize,cellSize-1,cellSize-1))
-            # if sequencer == True:
-            #     screen.blit(activeSurf,(col*cellSize,row*cellSize))
-        else: 
-            if matrix[row,col] != 0:
-                newMatrix[row,col] = 0
-    return newMatrix
-
-def pausedBoard(matrix):
-    for index, cell in np.ndenumerate(matrix):
-        row = index[0]
-        col = index[1]
-        if matrix[row,col] == 1:
-            pg.draw.rect(screen,cellColor,(col*cellSize,row*cellSize,cellSize-1,cellSize-1))
-
-
-def randomNoise(matrix):
-    x = random.randint(150)
-    y = random.randint(150)
-    matrix[x,y] = True
-    matrix[x+1,y+1] = True
-    matrix[x,y+1] = True
-    matrix[x+1,y] = True
+# matrix[8,10] = True
+# matrix[8,11] = True
+# matrix[9,9] = True
+# matrix[9,10] = True
+# matrix[10,10] = True
 
 #MUSIC STUFF:
 #====================================================
@@ -231,11 +274,15 @@ def notesCell(row, col, cellSize, noteDict = noteDict):
 
 colNum = 0
 #====================================================
-renderMatrix(rows,cols)
+
 muted = False
 sequencer = False
+drawColor = cellColor
+renderGrid(rows, cols)
 paused = True
+
 while 1:
+    newCells = createMatrix(rows,cols)
     midi_out.set_instrument(instrument)
     #gets all the events
     for event in pg.event.get():
@@ -250,7 +297,6 @@ while 1:
                         paused = False
                     else:
                         paused = True
-                    print("space")
                 case pg.K_1:
                     gameRate = 3
                 case pg.K_2:
@@ -259,13 +305,20 @@ while 1:
                     gameRate = 15
                 case pg.K_4:
                     gameRate = 25
-                case pg.K_5: 
-                    gameRate = 100
+                case pg.K_5:
+                    gameRate = 75
+                case pg.K_6:
+                    gameRate = 300
+                case pg.K_c:
+                    myColor = colorchooser.askcolor()
+                    cellColor = myColor[0]
                 case pg.K_m:
                     if muted:
                         muted = False
                     else:
                         muted = True
+                case pg.K_r:
+                    randomNoise(matrix,rows,cols)
                 case pg.K_s:
                     if sequencer:
                         sequencer = False
@@ -282,34 +335,42 @@ while 1:
                 case pg.K_MINUS:
                     if cellSize > minCellSize:
                         cellSize -= 1
-                        renderMatrix(rows, cols)
+                        renderGrid(rows, cols)
                 case pg.K_EQUALS:
                     if cellSize < maxCellSize:
                         cellSize += 1
-                        renderMatrix(rows, cols)
+                        renderGrid(rows, cols)
                 case pg.K_ESCAPE:
                     pg.quit()
                     exit()
-         
+            
        
+
+
     #background color set
     # screen.fill(gridColor)
     screen.blit(gridSurf,(0,0))
     
 
-    if paused == False:
+    if not paused:
         # randomNoise(matrix)
-        newMatrix = updateBoard(matrix, sequencer)
+        newMatrix = np.array(matrix)
+        newMatrix = updateMatrix(matrix, newMatrix, newCells, xindices)
         matrix = newMatrix
-
     else:
-        pausedBoard(matrix)
+        screen.blit(font.render("PAUSED", 1, (0,255,0)), (sWidth//2 - 20,sHeight - 100))
+        muted = True
+
+  
+    renderCells(matrix, muted, newCells)
        
 
     click = pg.mouse.get_pressed()
     mouseX, mouseY = pg.mouse.get_pos()
+    # print(click, mousex, mousey)
 
     #draw
+    #do not add cells that exceed board size
     if click[0]:
         paused = True
         rate = drawRate
@@ -325,7 +386,6 @@ while 1:
     else:
         rate = gameRate
 
-
     #music
     if sequencer == True and paused == False:
         playColumn(matrix, colNum, noteDict)
@@ -333,15 +393,11 @@ while 1:
         if colNum == cols:
             colNum = 0
 
-    aliveIndices = np.array(np.where(matrix == True))
-    population = str(aliveIndices.size // 2)
     screen.blit(displayFPS(), (10,5))
+    population = str(np.count_nonzero(matrix))
     screen.blit(font.render("Population: " + population, 1, (0,255,0)), (130,5))
     screen.blit(font.render("Instrument " + str(instrument) + ": "  + str(midiBank.get(instrument)), 1, (0,255,0)), (310,5))
     screen.blit(font.render("Sequencer: " + str(sequencer), 1, (0,255,0)), (90,5))
-    if paused:
-        screen.blit(font.render("PAUSED", 1, (0,255,0)), (sWidth//2 - 20,sHeight - 100))
-
-
     pg.display.update()
     clock.tick(rate)
+
