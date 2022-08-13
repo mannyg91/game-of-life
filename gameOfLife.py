@@ -28,9 +28,8 @@ def run():
             self.bg = pg.image.load('assets/bgGame7.jpg').convert()
             self.fontMed = pg.font.Font('assets/square_pixel-7.ttf', 27)
             self.fontLarge = pg.font.Font('assets/square_pixel-7.ttf', 32)
-            self.xOffset = 0
-            self.yOffset = 0
-            self.count = 0
+            self.xOffset, self.yOffset, self.count = 0, 0, 0
+    
 
         def gameAudio(self):
             pg.mixer.init()
@@ -52,20 +51,20 @@ def run():
                 self.paused = False
                 pg.mixer.music.unpause()
         
-        def gameMenu(self):
-            mouseX, mouseY = pg.mouse.get_pos()
-            if mouseY > game.sHeight * .75:
-                menuOpen = True
-                gameBar.render(alpha)
-                playBtn.render(alpha)
-                if alpha < 180:
-                    alpha += 60
-            else:
-                menuOpen = False
-                gameBar.render(alpha)
-                playBtn.render(alpha)
-                if alpha > 0:
-                    alpha -= 60
+        # def gameMenu(self):
+        #     mouseX, mouseY = pg.mouse.get_pos()
+        #     if mouseY > game.sHeight * .75:
+        #         menuOpen = True
+        #         gameBar.render(alpha)
+        #         playBtn.render(alpha)
+        #         if alpha < 180:
+        #             alpha += 60
+        #     else:
+        #         menuOpen = False
+        #         gameBar.render(alpha)
+        #         playBtn.render(alpha)
+        #         if alpha > 0:
+        #             alpha -= 60
             
         def events(self):
             for event in pg.event.get():
@@ -88,16 +87,6 @@ def run():
                         case pg.K_7: self.updateRate = 3
                         case pg.K_8: self.updateRate = 2
                         case pg.K_9: self.updateRate = 1
-                        # case pg.K_LEFTBRACKET:
-                        #     gMatrix.currentMatrix = np.rot90(gMatrix.currentMatrix,1)
-                        #     gMatrix.angle += 1
-                        #     if gMatrix.angle > 4:
-                        #         gMatrix.angle = 1
-                        # case pg.K_RIGHTBRACKET:
-                        #     gMatrix.currentMatrix = np.rot90(gMatrix.currentMatrix,3)
-                        #     gMatrix.angle -= 1
-                        #     if gMatrix.angle < 1:
-                        #         gMatrix.angle = 4
                         case pg.K_c:
                             game.xOffset = 0
                             game.yOffset = 0
@@ -110,6 +99,8 @@ def run():
                         case pg.K_p: print(Matrix.getPatterns(gMatrix))
                         case pg.K_r:
                             Matrix.randomNoise(gMatrix)
+                        case pg.K_x:
+                            gMatrix.currentMatrix = Matrix.createMatrix(gMatrix)
                         case pg.K_ESCAPE:
                             pg.quit()
                             exit()
@@ -387,14 +378,14 @@ def run():
             if click[0]:
                 game.paused = True
                 # rate = drawRate
-                roundedX = mouseX // gMatrix.currentCellSize
-                roundedY = mouseY // gMatrix.currentCellSize
+                roundedX = (mouseX - game.xOffset) // gMatrix.currentCellSize
+                roundedY = (mouseY - game.yOffset) // gMatrix.currentCellSize
                 gMatrix.currentMatrix[roundedY,roundedX] = True
             elif click[2]:
                 game.paused = True
                 # rate = drawRate
-                roundedX = mouseX // gMatrix.currentCellSize
-                roundedY = mouseY // gMatrix.currentCellSize
+                roundedX = (mouseX - game.xOffset) // gMatrix.currentCellSize
+                roundedY = (mouseY - game.yOffset) // gMatrix.currentCellSize
                 gMatrix.currentMatrix[roundedY,roundedX] = False
             else:
                 rate = game.FPS
