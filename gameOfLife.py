@@ -1,4 +1,4 @@
-from lib2to3.pgen2 import grammar
+import os
 import pygame as pg
 import numpy as np
 import time
@@ -7,34 +7,36 @@ from pygame.locals import *
 from sys import exit
 from numba import njit
 
-def run():
 
+def run():
+    
     class Game():
         def __init__(self):
             pg.init()
             self.running = True
             self.paused = True
-            self.FPS = 200
-            self.updateRate = 15
-            self.zoomRate = 3
-            self.travelRate = 2
+            self.max_fps = 200
+            self.fps_correction = 1
+            self.updateDelay = 15
+            self.zoomDelay = 1
+            self.moveDelay = 1
             self.clock = pg.time.Clock()
             displayInfo = pg.display.Info()
             self.sWidth = displayInfo.current_w
             self.sHeight = displayInfo.current_h
-            flags = FULLSCREEN | DOUBLEBUF
-            self.screen = pg.display.set_mode((self.sWidth, self.sHeight), flags, pg.FULLSCREEN, vsync=1)
+            self.screen = pg.display.set_mode((self.sWidth, self.sHeight), flags = pg.FULLSCREEN | pg.DOUBLEBUF, vsync=1)
             pg.display.set_caption("Conway's Game of Life")
-            self.bg = pg.image.load('assets/bgGame7.jpg').convert()
+            self.bg = pg.image.load('assets/starbg2.png').convert()
             self.fontMed = pg.font.Font('assets/square_pixel-7.ttf', 27)
             self.fontLarge = pg.font.Font('assets/square_pixel-7.ttf', 32)
             self.xOffset, self.yOffset, self.count = 0, 0, 0
-    
+            self.gameAudio()
+            self.funct = None
 
         def gameAudio(self):
             pg.mixer.init()
             pg.mixer.music.load("assets/paradigm.mp3")
-            self.volume = .5
+            self.volume = 0
             self.muted = False
             pg.mixer.music.set_volume(self.volume)
             pg.mixer.music.play()
@@ -42,31 +44,16 @@ def run():
         def game_loop(self):
             loop()
 
-        def pause(self, paused: bool):
+        def pause(self, paused: True):
             if paused:
                 self.paused = True
-                self.screen.blit(game.fontLarge.render("PAUSED", 1, (0,255,0)), (game.sWidth//2 - 50,game.sHeight - 160))
+                self.screen.blit(self.fontLarge.render("PAUSED", 1, (0,255,0)), (self.sWidth//2 - 50,self.sHeight - 160))
                 pg.mixer.music.pause()
             else:
                 self.paused = False
                 pg.mixer.music.unpause()
-        
-        # def gameMenu(self):
-        #     mouseX, mouseY = pg.mouse.get_pos()
-        #     if mouseY > game.sHeight * .75:
-        #         menuOpen = True
-        #         gameBar.render(alpha)
-        #         playBtn.render(alpha)
-        #         if alpha < 180:
-        #             alpha += 60
-        #     else:
-        #         menuOpen = False
-        #         gameBar.render(alpha)
-        #         playBtn.render(alpha)
-        #         if alpha > 0:
-        #             alpha -= 60
-            
-        def events(self):
+
+        def single_click_events(self):
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
@@ -75,21 +62,21 @@ def run():
                     match event.key:
                         case pg.K_SPACE:
                             if self.paused:
-                                game.pause(False)
+                                self.pause(False)
                             else:
-                                game.pause(True)
-                        case pg.K_1: self.updateRate = 100
-                        case pg.K_2: self.updateRate = 50
-                        case pg.K_3: self.updateRate = 25
-                        case pg.K_4: self.updateRate = 13
-                        case pg.K_5: self.updateRate = 8
-                        case pg.K_6: self.updateRate = 5
-                        case pg.K_7: self.updateRate = 3
-                        case pg.K_8: self.updateRate = 2
-                        case pg.K_9: self.updateRate = 1
+                                self.pause(True)
+                        case pg.K_1: self.updateDelay = 100
+                        case pg.K_2: self.updateDelay = 50
+                        case pg.K_3: self.updateDelay = 25
+                        case pg.K_4: self.updateDelay = 13
+                        case pg.K_5: self.updateDelay = 8
+                        case pg.K_6: self.updateDelay = 5
+                        case pg.K_7: self.updateDelay = 3
+                        case pg.K_8: self.updateDelay = 2
+                        case pg.K_9: self.updateDelay = 1
                         case pg.K_c:
-                            game.xOffset = 0
-                            game.yOffset = 0
+                            self.xOffset = 0
+                            self.yOffset = 0
                             gMatrix.renderGrid()
                         case pg.K_m:
                             if self.muted:
@@ -104,50 +91,133 @@ def run():
                         case pg.K_ESCAPE:
                             pg.quit()
                             exit()
+                if event.type == MOUSEBUTTONDOWN:
+                    print("mousebuttondown")
+                    if self.funct:
+                        self.funct()
 
+        def key_hold_events(self):
             keys = pg.key.get_pressed()
-            yLimit = game.sHeight
-            xLimit = game.sWidth
 
-            if game.count % game.zoomRate == 0:
+            if self.count % self.zoomDelay == 0:
+
                 if keys[pg.K_MINUS]:
+
                     if gMatrix.currentCellSize > gMatrix.minCellSize:
+
+                        colCenter1 = ((self.sWidth / gMatrix.currentCellSize) / 2) - (self.xOffset / gMatrix.currentCellSize)
+                        rowCenter1 = ((self.sHeight / gMatrix.currentCellSize) / 2) - (self.yOffset / gMatrix.currentCellSize)
+
                         gMatrix.currentCellSize -= 1
+
+                        colCenter2 = ((self.sWidth / gMatrix.currentCellSize) / 2) - (self.xOffset / gMatrix.currentCellSize)
+                        rowCenter2 = ((self.sHeight / gMatrix.currentCellSize) / 2) - (self.yOffset / gMatrix.currentCellSize)
+
+                        differenceX = (colCenter1 - colCenter2) * gMatrix.currentCellSize
+                        differenceY = (rowCenter1 - rowCenter2) * gMatrix.currentCellSize
+
+                        self.xOffset -= differenceX
+                        self.yOffset -= differenceY
+
                         gMatrix.renderGrid()
+
                 if keys[pg.K_EQUALS]:
+
                     if gMatrix.currentCellSize < gMatrix.maxCellSize:
+
+                        colCenter1 = ((self.sWidth / gMatrix.currentCellSize) / 2) - (self.xOffset / gMatrix.currentCellSize)
+                        rowCenter1 = ((self.sHeight / gMatrix.currentCellSize) / 2) - (self.yOffset / gMatrix.currentCellSize)
+
+
                         gMatrix.currentCellSize += 1
+
+                        colCenter2 = ((self.sWidth / gMatrix.currentCellSize) / 2) - (self.xOffset / gMatrix.currentCellSize)
+                        rowCenter2 = ((self.sHeight / gMatrix.currentCellSize) / 2) - (self.yOffset / gMatrix.currentCellSize)
+
+                        differenceX = (colCenter1 - colCenter2) * gMatrix.currentCellSize
+                        differenceY = (rowCenter1 - rowCenter2) * gMatrix.currentCellSize
+                        self.xOffset -= differenceX
+                        self.yOffset -= differenceY
+
                         gMatrix.renderGrid()
 
-            xyAmount = gMatrix.currentCellSize
 
-            if game.count % game.travelRate == 0:
                 if keys[pg.K_UP]:
-                    # if self.yOffset < 0:
-                    self.yOffset += xyAmount
-                    gMatrix.renderGrid()
+                    if self.yOffset < self.sHeight / 2:
+                        self.yOffset += gMatrix.currentCellSize * game.fps_correction
+                        gMatrix.renderGrid()
 
                 if keys[pg.K_RIGHT]:
                     # if self.xOffset > gMatrix.xBoundary[gMatrix.currentCellSize]:
-                    self.xOffset -= xyAmount
+                    self.xOffset -= gMatrix.currentCellSize * game.fps_correction
                     gMatrix.renderGrid()
 
                 if keys[pg.K_LEFT]:
-                    # if self.xOffset < 0:
-                    self.xOffset += xyAmount
-                    gMatrix.renderGrid()
+                    if self.xOffset < self.sWidth / 2:
+                        self.xOffset += gMatrix.currentCellSize * game.fps_correction
+                        gMatrix.renderGrid()
                         
                 if keys[pg.K_DOWN]:
                     # if self.yOffset > gMatrix.yBoundary[gMatrix.currentCellSize]:
-                    self.yOffset -= xyAmount
+                    self.yOffset -= gMatrix.currentCellSize * game.fps_correction
                     gMatrix.renderGrid()
+
+        def mouse_events(self):
+            click = pg.mouse.get_pressed()
+            mouseX, mouseY = pg.mouse.get_pos()
+            if click[0]:
+                if mouseX >= self.xOffset and mouseY >= self.yOffset and mouseY < game.sHeight * .91:
+                    try:
+                        self.paused = True
+                        roundedX = (mouseX - self.xOffset) / gMatrix.currentCellSize
+                        roundedY = (mouseY - self.yOffset) / gMatrix.currentCellSize
+                        gMatrix.currentMatrix[int(roundedY),int(roundedX)] = True
+                    except:
+                        print("out of range")
+            elif click[2] and mouseX >= self.yOffset:
+                if mouseX >= self.xOffset and mouseY >= self.yOffset:
+                    try:
+                        self.paused = True
+                        roundedX = (mouseX - self.xOffset) / gMatrix.currentCellSize
+                        roundedY = (mouseY - self.yOffset) / gMatrix.currentCellSize
+                        gMatrix.currentMatrix[int(roundedY),int(roundedX)] = False
+                    except:
+                        print("out of range")
 
     game = Game()
 
+    class Gui():
+        def __init__(self):
+            self.opaque_level = 0
+            self.menuOpen = False
+        def gameMenu(self):
+            mouseX, mouseY = pg.mouse.get_pos()
+            if mouseY > game.sHeight * .75:
+                self.menuOpen = True
+                if self.opaque_level < 245:
+                    self.opaque_level += 5 * game.fps_correction
+            else:
+                self.menuOpen = False
+                if self.opaque_level > 0:
+                    self.opaque_level -= 10 * game.fps_correction
+            gameBar.render(self.opaque_level)
+            playBtn.render(self.opaque_level)
+            speedSlider.render(self.opaque_level)
+            speedSlider2.render(self.opaque_level)
+            speedSliderBall.render(self.opaque_level)
+            speedSliderBall2.render(self.opaque_level)
+
+        def pauseSwitch():
+            if game.paused:
+                game.paused = False
+            else:
+                game.paused = True
+
+    game_gui = Gui()
 
 
     class Btn():
-        def __init__(self, imgPath: str, imgHoverPath: str, transparency: bool, scale, x, y, function = 0, alpha = 255):
+        def __init__(self, imgPath: str, imgHoverPath: str, transparency: bool, scale, x, y, function, alpha = 255):
             if transparency == True:
                 img = pg.image.load(imgPath).convert_alpha()
                 img.set_alpha(alpha)
@@ -156,13 +226,13 @@ def run():
             else:
                 img = pg.image.load(imgPath).convert()
                 imgHover = pg.image.load(imgHoverPath).convert()
-            width = img.get_width()
-            height = img.get_height()
-            self.img = pg.transform.scale(img, (int(scale*width), int(scale*height)))
-            self.imgHover = pg.transform.scale(imgHover, (int(scale*width), int(scale*height)))
+            self.width = img.get_width()
+            self.height = img.get_height()
+            self.img = pg.transform.scale(img, (int(scale*self.width), int(scale*self.height)))
+            self.imgHover = pg.transform.scale(imgHover, (int(scale*self.width), int(scale*self.height)))
             self.rect = self.img.get_rect()
             self.rect.topleft = (x,y)
-            self.funct = function
+            self.btn_funct = function
 
         def render(self, transparency):
             mousePos = pg.mouse.get_pos()
@@ -170,14 +240,24 @@ def run():
             self.imgHover.set_alpha(transparency)
             if self.rect.collidepoint(mousePos):
                 self.imgRender = self.imgHover
-                if pg.mouse.get_pressed()[0]:
-                    self.funct()
+                game.funct = self.btn_funct
             else:
                 self.imgRender = self.img
             game.screen.blit(self.imgRender, (self.rect.x, self.rect.y))
 
-    gameBar = Btn('assets/bgGame.png', 'assets/bgGame.png', True, 1, 0, game.sHeight - 100)
-    playBtn = Btn('assets/play.png', 'assets/playLit.png', True, 1, game.sWidth//2 - 14, game.sHeight - 63)
+        def test():
+            game.screen.blit(game.fontMed.render("test succeeded", 1, (0,255,0)), (550,300))
+
+
+    gameBar = Btn('assets/gameBar.png', 'assets/gameBar.png', True, 1, 0, game.sHeight - 100, Btn.test)
+    
+    playBtn = Btn('assets/play.png', 'assets/playLit.png', True, 1, game.sWidth//2 - 14, game.sHeight - 63, Gui.pauseSwitch)
+    playBtn2 = Btn('assets/play.png', 'assets/playLit.png', True, 1, game.sWidth//2 - 64, game.sHeight//2, Gui.pauseSwitch)
+    speedIcon = Btn('assets/speed.png','assets/speed.png', True, 1, game.sWidth//2 + 50, game.sHeight//2, Gui.pauseSwitch)
+    speedSlider = Btn('assets/slider.png','assets/slider.png', True, .25, game.sWidth//2 + 50, game.sHeight -52, Btn.test)
+    speedSlider2 = Btn('assets/slider.png','assets/slider.png', True, .25, game.sWidth//2 - 250, game.sHeight-52, Btn.test)
+    speedSliderBall = Btn('assets/sliderBall.png','assets/sliderBallLit.png', True, .3, game.sWidth//2 + 200, game.sHeight - 57, Btn.test)
+    speedSliderBall2 = Btn('assets/sliderBall.png','assets/sliderBallLit.png', True, .3, game.sWidth//2 - 200, game.sHeight - 57, Btn.test)
 
 
     class Matrix:
@@ -186,7 +266,7 @@ def run():
             self.currentCellSize = startCellSize
             self.initialCellSize = startCellSize
             self.maxCellSize = maxCellSize
-            self.rows = game.sHeight // minCellSize     
+            self.rows = game.sHeight // minCellSize    
             self.cols = game.sWidth // minCellSize
             self.indices = self.allIndices()
             self.emptyMatrix = self.createMatrix()
@@ -197,7 +277,8 @@ def run():
             self.cellColor = (255,255,255)
             self.xBoundary = self.cameraBounds(game.sWidth)
             self.yBoundary = self.cameraBounds(game.sHeight)
-            self.gridShades = self.createGridShades(self.minCellSize, .97, self.initGridColor)
+            self.gridShades = self.createGridShades(self.minCellSize, .965, self.initGridColor)
+            self.bgSurf = pg.Surface((game.sWidth, game.sHeight))
 
         def createMatrix(self):
             return np.zeros([self.rows,self.cols], dtype = int)
@@ -214,14 +295,13 @@ def run():
 
         def renderGrid(self):
             gridColor = self.gridShades[self.currentCellSize]
-            bgSurf.blit(game.bg,(0,0)) 
-            pg.draw.rect(bgSurf, gMatrix.bgColor, (game.xOffset,game.yOffset,self.currentCellSize * self.cols ,self.currentCellSize * self.rows))
+            self.bgSurf.blit(game.bg,(0,0)) 
+            pg.draw.rect(self.bgSurf, gMatrix.bgColor, (game.xOffset,game.yOffset,self.currentCellSize * self.cols ,self.currentCellSize * self.rows))
             for row in range(self.rows):
-                pg.draw.line(bgSurf, gridColor, (game.xOffset,row * self.currentCellSize + game.yOffset), (self.cols * self.currentCellSize + game.xOffset,row * self.currentCellSize + game.yOffset))
+                pg.draw.line(self.bgSurf, gridColor, (game.xOffset,row * self.currentCellSize + game.yOffset), (self.cols * self.currentCellSize + game.xOffset,row * self.currentCellSize + game.yOffset))
             for col in range(self.cols):
-                pg.draw.line(bgSurf, gridColor, (col * self.currentCellSize + game.xOffset,game.yOffset), (col * self.currentCellSize + game.xOffset, self.rows * self.currentCellSize + game.yOffset))
+                pg.draw.line(self.bgSurf, gridColor, (col * self.currentCellSize + game.xOffset,game.yOffset), (col * self.currentCellSize + game.xOffset, self.rows * self.currentCellSize + game.yOffset))
 
-    
         @staticmethod
         @njit
         def updateMatrix(matrix,newMatrix,newCells,indices):
@@ -287,28 +367,21 @@ def run():
             return
                 
     class gameObject:
-        def __init__(self, color, imgPath: str, transparency: bool, alpha = 255):
-            self.color = color
+        def __init__(self, imgPath: str, transparency: bool):
+            self.opaque_level = 255
             if transparency == True:
                 self.img = pg.image.load(imgPath).convert_alpha()
-                self.img.set_alpha(alpha)
+                self.img.set_alpha(self.opaque_level)
             else:
                 self.img = pg.image.load(imgPath).convert()
 
-    cellObj = gameObject((255,255,255),'assets/cube.png',True,250)
-    tileObj = gameObject((255,255,255), 'assets/tile.png',True,100)
+    cellObj = gameObject('assets/cube.png',True)
+    tileObj = gameObject('assets/tile.png',True)
 
-
-    gMatrix = Matrix(10, 2, 60)
+    gMatrix = Matrix(10, 3, 60)
     rPentomino = np.array([[10,10],[10,11],[11,9],[11,10],[12,10]])
     gMatrix.loadPatternOld(rPentomino)
 
-
-    bgSurf = pg.Surface((game.sWidth, game.sHeight))
-    gridSurf = pg.Surface((gMatrix.currentCellSize * gMatrix.cols, gMatrix.currentCellSize * gMatrix.rows))
-
-    # gridSurf = pg.Surface((gMatrix.currentCellSize * gMatrix.cols, gMatrix.currentCellSize * gMatrix.rows))
-    
 
 
     # =====LOAD PATTERNS HERE=============================
@@ -330,34 +403,21 @@ def run():
     # gMatrix.loadPattern(gliderGun)
 
 
-
-
-
-
     gMatrix.renderGrid()
-    game.gameAudio()
-    game.paused = True
-    menuOpen = False
-
+    
 
     def loop():
         while game.running:
 
-            game.events()
-            game.count += 1
+            game.single_click_events()
+            game.key_hold_events()
+            game.mouse_events()
             
-            game.screen.blit(bgSurf,(0,0))
-            # game.screen.blit(gridSurf,(0 + game.xOffset,0 + game.yOffset))
-            
-            # gridSurf = pg.Surface((gMatrix.currentCellSize * gMatrix.cols, gMatrix.currentCellSize * gMatrix.rows))
-            # game.screen.blit(bgSurf,(0,0))
-            # game.screen.blit(gridSurf,(0 + game.xOffset,0 + game.yOffset))
-            # gMatrix.renderGrid()
+            game.screen.blit(gMatrix.bgSurf,(0,0))
 
-            if game.count % game.updateRate == 0:
+            if game.count % game.updateDelay == 0:
                 newCells = np.zeros([gMatrix.rows,gMatrix.cols], dtype = int)
                 if not game.paused:
-                    # randomNoise(matrix)
                     newMatrix = np.array(gMatrix.currentMatrix)
                     newMatrix = gMatrix.updateMatrix(gMatrix.currentMatrix, newMatrix, newCells, gMatrix.indices)
                     gMatrix.currentMatrix = newMatrix
@@ -368,54 +428,30 @@ def run():
             gMatrix.renderCells()
             
 
-            click = pg.mouse.get_pressed()
-            mouseX, mouseY = pg.mouse.get_pos()
-
-
-            #draw
-            #do not add cells that exceed board size
-            #to speed up: turn into function, add blit
-            if click[0]:
-                game.paused = True
-                # rate = drawRate
-                roundedX = (mouseX - game.xOffset) // gMatrix.currentCellSize
-                roundedY = (mouseY - game.yOffset) // gMatrix.currentCellSize
-                gMatrix.currentMatrix[roundedY,roundedX] = True
-            elif click[2]:
-                game.paused = True
-                # rate = drawRate
-                roundedX = (mouseX - game.xOffset) // gMatrix.currentCellSize
-                roundedY = (mouseY - game.yOffset) // gMatrix.currentCellSize
-                gMatrix.currentMatrix[roundedY,roundedX] = False
-            else:
-                rate = game.FPS
-
-
-            initial1 = game.sWidth // gMatrix.minCellSize
-
-            maxOffset = { 3 : 0, 4 : initial1,  }
-
-
-
-
-
-
-
             population = str(np.count_nonzero(gMatrix.currentMatrix))
             game.screen.blit(game.fontMed.render("Population: " + population, 1, (0,255,0)), (35,10))
 
 
+            display_fps = game.clock.get_fps()
+            if display_fps > 0:
+                game.fps_correction = game.max_fps / display_fps
+          
+
+
             #---FOR TESTING:---#
+            # game.screen.blit(game.fontMed.render("FPS: " + str(display_fps), 1, (0,255,0)), (550,10))
             # game.screen.blit(game.fontMed.render("X/Y Offset: " + str(game.xOffset) + "," + str(game.yOffset), 1, (0,255,0)), (350,10))
             # game.screen.blit(game.fontMed.render("number of cols: " + str(game.sWidth // gMatrix.currentCellSize), 1, (0,255,0)), (350,50))
             # game.screen.blit(game.fontMed.render("number of rows: " + str(game.sHeight // gMatrix.currentCellSize), 1, (0,255,0)), (650,50))
             # game.screen.blit(game.fontMed.render("cell size: " + str(gMatrix.currentCellSize), 1, (0,255,0)), (950,50))
+            # game.screen.blit(game.fontMed.render("center col/row:" + str(((game.sWidth / gMatrix.currentCellSize) // 2) - (game.xOffset // gMatrix.currentCellSize)) + "," + str(((game.sHeight / gMatrix.currentCellSize) // 2)  - (game.yOffset // gMatrix.currentCellSize)), 1, (0,255,0)), (650,80))
             # game.screen.blit(game.fontMed.render("dict offset: " + str(gMatrix.offsets[gMatrix.currentCellSize]), 1, (0,255,0)), (950,100))
 
-
-            
+            Gui.gameMenu(game_gui)
+            game.count += 1
             pg.display.flip()
-            game.clock.tick(game.FPS)
+            game.clock.tick(game.max_fps)
+
 
     game.game_loop()
 
