@@ -1,27 +1,67 @@
-from matplotlib import scale
 import pygame as pg
-import time
 import sys
-from button import Button
 from pygame.locals import *
-import gameOfLife_MIDI
-import gameOfLife__working__no_classes_
+import gameOfLife_musicMode
+import gameOfLife
 import gameOfLife_isometric
-import time
 
-pg.init()
-clock = pg.time.Clock()
-FPS = 60
-displayInfo = pg.display.Info()
-sWidth = displayInfo.current_w
-sHeight = displayInfo.current_h
 
-flags = FULLSCREEN | DOUBLEBUF
-SCREEN = pg.display.set_mode((sWidth, sHeight), flags, pg.FULLSCREEN)
-pg.display.set_caption("Conway's Game of Life")
+class Game():
+    def __init__(self):
+        pg.init()
+        self.FPS = 60
+        self.updateRate = 15
+        self.clock = pg.time.Clock()
+        displayInfo = pg.display.Info()
+        self.sWidth = displayInfo.current_w
+        self.sHeight = displayInfo.current_h
+        flags = FULLSCREEN | DOUBLEBUF
+        self.screen = pg.display.set_mode((self.sWidth, self.sHeight), flags, pg.FULLSCREEN, vsync=1)
+        pg.display.set_caption("Conway's Game of Life")
+        self.bg = pg.image.load("assets/bgmenu2.jpg").convert()
+        self.centerX = self.sWidth//2
+        self.centerY = self.sHeight//2
 
-centerX = sWidth//2
-centerY = sHeight//2
+    def gameAudio(self):
+                pg.mixer.init()
+                pg.mixer.music.load("assets/paradigm.mp3")
+                self.volume = .5
+                self.muted = False
+                pg.mixer.music.set_volume(self.volume)
+                pg.mixer.music.play()
+                
+    def events(self):
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+                exit()
+            if event.type == pg.KEYDOWN:
+                match event.key:
+                    case pg.K_m:
+                        if self.muted:
+                            self.muted = False
+                        else:
+                            self.muted = True
+                    case pg.K_ESCAPE:
+                        pg.quit()
+                        exit()
+
+    def gameAudio(self):
+        pg.mixer.init()
+        pg.mixer.music.load("assets/intro.mp3")
+        self.btn = pg.mixer.Sound("assets/btnsound.mp3")
+        self.volume = .9
+        self.muted = False
+        self.sfx_playing = False
+        pg.mixer.music.set_volume(self.volume)
+        pg.mixer.music.play()
+
+
+
+game = Game()
+game.gameAudio()
+
+
 
 def get_font(size):
     return pg.font.Font("assets/square_pixel-7.ttf", size)
@@ -36,7 +76,6 @@ def quit():
 def main_menu():
 
     TRANSITION = pg.image.load("assets/transition.png").convert_alpha()
-    BG = pg.image.load("assets/bgmenu2.jpg").convert_alpha()
     startImg = pg.image.load("assets/startBtn.png").convert_alpha()
     musicImg = pg.image.load("assets/musicBtn.png").convert_alpha()
     cubeImg = pg.image.load("assets/cubeBtn.png").convert_alpha()
@@ -48,16 +87,16 @@ def main_menu():
 
     def openFade(img, transAlpha):
         if transAlpha > 0 and transAlpha <= 255:
-            SCREEN.blit(img, (0,0))
+            game.screen.blit(img, (0,0))
             img.set_alpha(transAlpha)
-            transAlpha -= 2   
+            transAlpha -= 1  
         return transAlpha
 
     def closeFade(img, transAlpha, func):
         if transAlpha < 255:
-            SCREEN.blit(TRANSITION, (0,0))
+            game.screen.blit(TRANSITION, (0,0))
             img.set_alpha(transAlpha)
-            transAlpha += 2  
+            transAlpha += 1  
         if transAlpha >= 255:
             pass
         return transAlpha
@@ -79,11 +118,14 @@ def main_menu():
             self.imgHover.set_alpha(transparency)
             if self.rect.collidepoint(mousePos):
                 self.imgRender = self.imgHover
+                # if game.sfx_playing == False:
+                #     # pg.mixer.Channel(0).play(game.btn)
+                #     game.sfx_playing = True
                 if pg.mouse.get_pressed()[0]:
                     self.funct()
             else:
                 self.imgRender = self.img
-            SCREEN.blit(self.imgRender, (self.rect.x, self.rect.y))
+            game.screen.blit(self.imgRender, (self.rect.x, self.rect.y))
 
 
     alpha = 0
@@ -91,10 +133,10 @@ def main_menu():
     transAlpha = 255
     titleSize = 500
 
-    startBtn = Btn(startImg, startLitImg, .6, centerX-150, centerY+20, gameOfLife__working__no_classes_.runBasicGame)
-    musicBtn = Btn(musicImg, musicLitImg, .6, centerX-520, centerY+105, gameOfLife_MIDI.runMusicGame)
-    cubeBtn = Btn(cubeImg, cubeLitImg, .6, centerX+240, centerY+95, gameOfLife_isometric.run)
-    exitBtn = Btn(exitImg, exitLitImg, .6, centerX-150, centerY+200, quit)
+    startBtn = Btn(startImg, startLitImg, .6, game.centerX-150, game.centerY+20, gameOfLife.run)
+    musicBtn = Btn(musicImg, musicLitImg, .6, game.centerX-520, game.centerY+105, gameOfLife_musicMode.run)
+    cubeBtn = Btn(cubeImg, cubeLitImg, .6, game.centerX+240, game.centerY+95, gameOfLife_isometric.run)
+    exitBtn = Btn(exitImg, exitLitImg, .6, game.centerX-150, game.centerY+200, quit)
 
     
 # def fade(img, alpha):
@@ -108,11 +150,11 @@ def main_menu():
 #             SCREEN.blit(img, (0,0))
 #             img.set_alpha
 #             alpha += 1
-
+    count = 0
 
     while True:
-        
-        SCREEN.blit(BG, (0, 0))
+        game.events()
+        game.screen.blit(game.bg, (0, 0))
 
         
         MENU_TEXT = get_font(int(titleSize * .38)).render("Conway's", True, "#00ff00")
@@ -120,15 +162,15 @@ def main_menu():
         MENU_TEXT.set_alpha(alpha)
         MENU_TEXT2.set_alpha(alpha)
 
-        SCREEN.blit(MENU_TEXT, MENU_TEXT.get_rect(center=(centerX-350,centerY-265)))
-        SCREEN.blit(MENU_TEXT2, MENU_TEXT2.get_rect(center=(centerX,centerY-180)))
+        game.screen.blit(MENU_TEXT, MENU_TEXT.get_rect(center=(game.centerX-350,game.centerY-265)))
+        game.screen.blit(MENU_TEXT2, MENU_TEXT2.get_rect(center=(game.centerX,game.centerY-180)))
 
         if titleSize <= 180:
             startBtn.render(alpha2)
             musicBtn.render(alpha2)
             cubeBtn.render(alpha2)
             exitBtn.render(alpha2)
-            alpha2 += 3
+            alpha2 += 1
 
 
         for event in pg.event.get():
@@ -137,11 +179,18 @@ def main_menu():
                 sys.exit()
 
         if titleSize > 180:
-            titleSize -= 3
-        alpha += 2
+            titleSize -= 1
+
+        if count % 2 == 0:
+            alpha += 1
+
+        count += 1
+        
+
+
 
         transAlpha = openFade(TRANSITION,transAlpha)
         pg.display.update()
-        clock.tick(FPS)
+        game.clock.tick(game.FPS)
 
 main_menu()
