@@ -1,6 +1,5 @@
 import pygame as pg
 import numpy as np
-import time
 from numpy import random
 from pygame.locals import *
 from sys import exit
@@ -15,6 +14,7 @@ def run():
             self.paused = True
             self.FPS = 60
             self.updateRate = 15
+            self.clock = pg.time.Clock()
             displayInfo = pg.display.Info()
             self.sWidth = displayInfo.current_w
             self.sHeight = displayInfo.current_h
@@ -36,7 +36,6 @@ def run():
             pg.mixer.music.play()
 
         def game_loop(self):
-            self.clock = pg.time.Clock()
             loop()
 
         def pause(self, paused: bool):
@@ -171,7 +170,7 @@ def run():
                 self.imgRender = self.img
             game.screen.blit(self.imgRender, (self.rect.x, self.rect.y))
 
-    gameBar = Btn('assets/bgGame.png', 'assets/bgGame.png', True, 1, 0, game.sHeight - 100)
+    gameBar = Btn('assets/gameBar.png', 'assets/gameBar.png', True, 1, 0, game.sHeight - 100)
     playBtn = Btn('assets/play.png', 'assets/playLit.png', True, 1, game.sWidth//2 - 14, game.sHeight - 63)
 
 
@@ -335,7 +334,6 @@ def run():
 
             population = str(np.count_nonzero(gMatrix.currentMatrix))
             game.screen.blit(game.fontMed.render("Population: " + population, 1, (0,255,0)), (35,10))
-
 
             pg.display.flip()
             game.clock.tick(game.FPS)
