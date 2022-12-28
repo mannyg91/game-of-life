@@ -5,5 +5,5 @@ MIDI musical mode and isometric-3D representation.
 
 It can be run by launching main.py while the other .py files and the assets folder (unzipped) are in the same directory.
 
-As of 8/23/22, it is still a work in progress.
+View demo: [YouTube](https://youtu.be/LZbcslFJXdo)
 
